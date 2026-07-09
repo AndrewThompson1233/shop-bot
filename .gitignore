@@ -2,8 +2,15 @@ __pycache__/
 *.py[cod]
 *$py.class
 .env
+.env.local
 .venv/
 venv/
 ENV/
 env.bak/
 shop.db
+shop.db-journal
+shop.db-wal
+shop.db-shm
+*.sqlite
+*.sqlite3
+*.log
