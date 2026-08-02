@@ -1,4 +1,4 @@
-import logging
+import logging as log
 from html import escape
 
 from aiogram import F, Router
@@ -7,183 +7,183 @@ from aiogram.filters import CommandStart
 from aiogram.types import CallbackQuery, Message
 from sqlalchemy import func, select
 
-from src.database.engine import AsyncSessionLocal
-from src.database.models import Invoice, Product, User
-from src.keyboards.callbacks import BuyCallback, CheckInvoiceCallback, ProductCallback
-from src.keyboards.inline import get_catalog_keyboard, get_main_menu, get_payment_keyboard, get_product_keyboard
-from src.services.cryptopay import crypto_client
+from src.database.engine import ASL
+from src.database.models import I, P, U
+from src.keyboards.callbacks import BuyCB, CheckInvCB, ProdCB
+from src.keyboards.inline import get_cat_kb, get_main_menu, get_pay_kb, get_prod_kb
+from src.services.cryptopay import CC
 
 router = Router()
-log = logging.getLogger(__name__)
+lg = log.getLogger(__name__)
 
 
-async def edit_message(callback: CallbackQuery, text: str, **kwargs: object) -> None:
-    if not callback.message:
+async def edit_msg(cb: CallbackQuery, txt: str, **kw: object) -> None:
+    if not cb.message:
         return
     try:
-        await callback.message.edit_text(text, **kwargs)
-    except TelegramBadRequest as error:
-        if "message is not modified" not in str(error).lower():
+        await cb.message.edit_text(txt, **kw)
+    except TelegramBadRequest as e:
+        if "message is not modified" not in str(e).lower():
             raise
 
 
 @router.message(CommandStart())
-async def cmd_start(message: Message) -> None:
-    if not message.from_user:
+async def cmd_start(msg: Message) -> None:
+    if not msg.from_user:
         return
 
-    async with AsyncSessionLocal() as session:
-        result = await session.execute(select(User).where(User.telegram_id == message.from_user.id))
-        user = result.scalar_one_or_none()
-        if user is None:
-            session.add(User(telegram_id=message.from_user.id, username=message.from_user.username))
-        elif user.username != message.from_user.username:
-            user.username = message.from_user.username
-        await session.commit()
+    async with ASL() as s:
+        res = await s.execute(select(U).where(U.telegram_id == msg.from_user.id))
+        u = res.scalar_one_or_none()
+        if u is None:
+            s.add(U(telegram_id=msg.from_user.id, username=msg.from_user.username))
+        elif u.username != msg.from_user.username:
+            u.username = msg.from_user.username
+        await s.commit()
 
-    await message.answer("Добро пожаловать в магазин цифровых товаров.", reply_markup=get_main_menu())
+    await msg.answer("Добро пожаловать в магазин цифровых товаров.", reply_markup=get_main_menu())
 
 
 @router.callback_query(F.data == "main_menu")
-async def process_main_menu(callback: CallbackQuery) -> None:
-    await callback.answer()
-    await edit_message(callback, "Главное меню:", reply_markup=get_main_menu())
+async def proc_main_menu(cb: CallbackQuery) -> None:
+    await cb.answer()
+    await edit_msg(cb, "Главное меню:", reply_markup=get_main_menu())
 
 
 @router.callback_query(F.data == "profile")
-async def process_profile(callback: CallbackQuery) -> None:
-    async with AsyncSessionLocal() as session:
-        user_result = await session.execute(select(User).where(User.telegram_id == callback.from_user.id))
-        user = user_result.scalar_one_or_none()
-        purchases = 0
-        if user:
-            purchases = await session.scalar(
-                select(func.count(Invoice.id)).where(Invoice.user_id == user.id, Invoice.status == "paid")
+async def proc_profile(cb: CallbackQuery) -> None:
+    async with ASL() as s:
+        u_res = await s.execute(select(U).where(U.telegram_id == cb.from_user.id))
+        u = u_res.scalar_one_or_none()
+        purch = 0
+        if u:
+            purch = await s.scalar(
+                select(func.count(I.id)).where(I.user_id == u.id, I.status == "paid")
             ) or 0
 
-    await callback.answer()
-    text = f"👤 <b>Профиль</b>\n\nID: <code>{callback.from_user.id}</code>\nУспешных покупок: {purchases}"
-    await edit_message(callback, text, reply_markup=get_main_menu())
+    await cb.answer()
+    txt = f"👤 <b>Профиль</b>\n\nID: <code>{cb.from_user.id}</code>\nУспешных покупок: {purch}"
+    await edit_msg(cb, txt, reply_markup=get_main_menu())
 
 
 @router.callback_query(F.data == "catalog")
-async def process_catalog(callback: CallbackQuery) -> None:
-    async with AsyncSessionLocal() as session:
-        result = await session.execute(select(Product).where(Product.is_active.is_(True)).order_by(Product.id))
-        products = list(result.scalars())
+async def proc_catalog(cb: CallbackQuery) -> None:
+    async with ASL() as s:
+        res = await s.execute(select(P).where(P.is_active.is_(True)).order_by(P.id))
+        prods = list(res.scalars())
 
-    await callback.answer()
-    if not products:
-        await edit_message(callback, "Каталог пуст.", reply_markup=get_main_menu())
+    await cb.answer()
+    if not prods:
+        await edit_msg(cb, "Каталог пуст.", reply_markup=get_main_menu())
         return
-    await edit_message(callback, "Выберите товар:", reply_markup=get_catalog_keyboard(products))
+    await edit_msg(cb, "Выберите товар:", reply_markup=get_cat_kb(prods))
 
 
-@router.callback_query(ProductCallback.filter())
-async def process_product(callback: CallbackQuery, callback_data: ProductCallback) -> None:
-    async with AsyncSessionLocal() as session:
-        product = await session.scalar(
-            select(Product).where(Product.id == callback_data.product_id, Product.is_active.is_(True))
+@router.callback_query(ProdCB.filter())
+async def proc_product(cb: CallbackQuery, cd: ProdCB) -> None:
+    async with ASL() as s:
+        prod = await s.scalar(
+            select(P).where(P.id == cd.product_id, P.is_active.is_(True))
         )
 
-    if product is None:
-        await callback.answer("Товар не найден.", show_alert=True)
+    if prod is None:
+        await cb.answer("Товар не найден.", show_alert=True)
         return
 
-    await callback.answer()
-    text = (
-        f"📦 <b>{escape(product.name)}</b>\n\n{escape(product.description)}\n\n"
-        f"Цена: {product.price_usdt:g} USDT"
+    await cb.answer()
+    txt = (
+        f"📦 <b>{escape(prod.name)}</b>\n\n{escape(prod.description)}\n\n"
+        f"Цена: {prod.price_usdt:g} USDT"
     )
-    await edit_message(callback, text, reply_markup=get_product_keyboard(product.id))
+    await edit_msg(cb, txt, reply_markup=get_prod_kb(prod.id))
 
 
-@router.callback_query(BuyCallback.filter())
-async def process_buy(callback: CallbackQuery, callback_data: BuyCallback) -> None:
-    async with AsyncSessionLocal() as session:
-        user = await session.scalar(select(User).where(User.telegram_id == callback.from_user.id))
-        product = await session.scalar(
-            select(Product).where(Product.id == callback_data.product_id, Product.is_active.is_(True))
+@router.callback_query(BuyCB.filter())
+async def proc_buy(cb: CallbackQuery, cd: BuyCB) -> None:
+    async with ASL() as s:
+        u = await s.scalar(select(U).where(U.telegram_id == cb.from_user.id))
+        prod = await s.scalar(
+            select(P).where(P.id == cd.product_id, P.is_active.is_(True))
         )
 
-        if user is None or product is None:
-            await callback.answer("Пользователь или товар не найден.", show_alert=True)
+        if u is None or prod is None:
+            await cb.answer("Пользователь или товар не найден.", show_alert=True)
             return
 
         try:
-            invoice = await crypto_client.create_invoice(
+            inv = await CC.create_invoice(
                 asset="USDT",
-                amount=product.price_usdt,
-                description=f"Оплата товара: {product.name}"[:1024],
+                amount=prod.price_usdt,
+                description=f"Оплата товара: {prod.name}"[:1024],
             )
         except Exception:
-            log.exception("create_invoice failed user=%s product=%s", callback.from_user.id, product.id)
-            await callback.answer("Не удалось создать счет. Попробуйте позже.", show_alert=True)
+            lg.exception("create_invoice failed user=%s product=%s", cb.from_user.id, prod.id)
+            await cb.answer("Не удалось создать счет. Попробуйте позже.", show_alert=True)
             return
 
-        session.add(
-            Invoice(
-                crypto_invoice_id=invoice.invoice_id,
-                user_id=user.id,
-                product_id=product.id,
+        s.add(
+            I(
+                crypto_invoice_id=inv.invoice_id,
+                user_id=u.id,
+                product_id=prod.id,
             )
         )
-        await session.commit()
+        await s.commit()
 
-        price = product.price_usdt
-        url = invoice.bot_invoice_url
-        inv_id = invoice.invoice_id
+        price = prod.price_usdt
+        url = inv.bot_invoice_url
+        inv_id = inv.invoice_id
 
-    await callback.answer()
-    await edit_message(
-        callback,
+    await cb.answer()
+    await edit_msg(
+        cb,
         f"Оплатите счет на сумму {price:g} USDT.",
-        reply_markup=get_payment_keyboard(url, inv_id),
+        reply_markup=get_pay_kb(url, inv_id),
     )
 
 
-@router.callback_query(CheckInvoiceCallback.filter())
-async def process_check_invoice(callback: CallbackQuery, callback_data: CheckInvoiceCallback) -> None:
-    async with AsyncSessionLocal() as session:
-        db_invoice = await session.scalar(
-            select(Invoice)
-            .join(User, User.id == Invoice.user_id)
+@router.callback_query(CheckInvCB.filter())
+async def proc_check_inv(cb: CallbackQuery, cd: CheckInvCB) -> None:
+    async with ASL() as s:
+        db_inv = await s.scalar(
+            select(I)
+            .join(U, U.id == I.user_id)
             .where(
-                Invoice.crypto_invoice_id == callback_data.invoice_id,
-                User.telegram_id == callback.from_user.id,
+                I.crypto_invoice_id == cd.invoice_id,
+                U.telegram_id == cb.from_user.id,
             )
         )
-        if db_invoice is None:
-            await callback.answer("Счет не найден.", show_alert=True)
+        if db_inv is None:
+            await cb.answer("Счет не найден.", show_alert=True)
             return
-        if db_invoice.status == "paid":
-            await callback.answer("Этот счет уже был обработан.", show_alert=True)
+        if db_inv.status == "paid":
+            await cb.answer("Этот счет уже был обработан.", show_alert=True)
             return
 
         try:
-            invoices = await crypto_client.get_invoices(invoice_ids=callback_data.invoice_id)
+            invoices = await CC.get_invoices(invoice_ids=cd.invoice_id)
         except Exception:
-            log.exception("get_invoices failed invoice=%s", callback_data.invoice_id)
-            await callback.answer("Не удалось проверить оплату. Попробуйте позже.", show_alert=True)
+            lg.exception("get_invoices failed invoice=%s", cd.invoice_id)
+            await cb.answer("Не удалось проверить оплату. Попробуйте позже.", show_alert=True)
             return
 
         if not invoices or invoices[0].status != "paid":
-            await callback.answer("Оплата еще не поступила. Попробуйте позже.", show_alert=True)
+            await cb.answer("Оплата еще не поступила. Попробуйте позже.", show_alert=True)
             return
 
-        product = await session.get(Product, db_invoice.product_id)
-        if product is None:
-            await callback.answer("Товар больше недоступен. Обратитесь к администратору.", show_alert=True)
+        prod = await s.get(P, db_inv.product_id)
+        if prod is None:
+            await cb.answer("Товар больше недоступен. Обратитесь к администратору.", show_alert=True)
             return
 
-        db_invoice.status = "paid"
-        await session.commit()
+        db_inv.status = "paid"
+        await s.commit()
 
-        content = product.content
+        content = prod.content
 
-    await callback.answer()
-    await edit_message(
-        callback,
+    await cb.answer()
+    await edit_msg(
+        cb,
         f"✅ <b>Оплата успешна!</b>\n\nВаш товар:\n<code>{escape(content)}</code>",
         reply_markup=get_main_menu(),
     )

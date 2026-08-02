@@ -1,7 +1,7 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-from src.database.models import Product
-from src.keyboards.callbacks import BuyCallback, CheckInvoiceCallback, ProductCallback
+from src.database.models import P
+from src.keyboards.callbacks import BuyCB, CheckInvCB, ProdCB
 
 
 def get_main_menu() -> InlineKeyboardMarkup:
@@ -13,37 +13,37 @@ def get_main_menu() -> InlineKeyboardMarkup:
     )
 
 
-def get_catalog_keyboard(products: list[Product]) -> InlineKeyboardMarkup:
+def get_cat_kb(prods: list[P]) -> InlineKeyboardMarkup:
     rows = [
         [
             InlineKeyboardButton(
-                text=f"{product.name} — {product.price_usdt:g} USDT",
-                callback_data=ProductCallback(product_id=product.id).pack(),
+                text=f"{p.name} — {p.price_usdt:g} USDT",
+                callback_data=ProdCB(product_id=p.id).pack(),
             )
         ]
-        for product in products
+        for p in prods
     ]
     rows.append([InlineKeyboardButton(text="🔙 Назад", callback_data="main_menu")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-def get_product_keyboard(product_id: int) -> InlineKeyboardMarkup:
+def get_prod_kb(pid: int) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="💳 Купить", callback_data=BuyCallback(product_id=product_id).pack())],
+            [InlineKeyboardButton(text="💳 Купить", callback_data=BuyCB(product_id=pid).pack())],
             [InlineKeyboardButton(text="🔙 В каталог", callback_data="catalog")],
         ]
     )
 
 
-def get_payment_keyboard(url: str, invoice_id: int) -> InlineKeyboardMarkup:
+def get_pay_kb(url: str, inv_id: int) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="🔗 Оплатить", url=url)],
             [
                 InlineKeyboardButton(
                     text="🔄 Проверить оплату",
-                    callback_data=CheckInvoiceCallback(invoice_id=invoice_id).pack(),
+                    callback_data=CheckInvCB(invoice_id=inv_id).pack(),
                 )
             ],
             [InlineKeyboardButton(text="❌ Отмена", callback_data="catalog")],

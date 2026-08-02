@@ -4,7 +4,7 @@ from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class Settings(BaseSettings):
+class S(BaseSettings):
     bot_token: SecretStr
     cryptopay_token: SecretStr
     admin_ids: list[int] = Field(default_factory=list)
@@ -26,8 +26,8 @@ class Settings(BaseSettings):
 
 
 @lru_cache
-def get_settings() -> Settings:
-    return Settings()
+def get_settings() -> S:
+    return S()
 
 
 settings = get_settings()

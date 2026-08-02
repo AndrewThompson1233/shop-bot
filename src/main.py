@@ -1,5 +1,5 @@
-import asyncio
-import logging
+import asyncio as aio
+import logging as log
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
@@ -7,15 +7,15 @@ from aiogram.client.default import DefaultBotProperties
 from src.config import settings
 from src.database.engine import close_db, init_db
 from src.handlers import admin, user
-from src.services.cryptopay import crypto_client
+from src.services.cryptopay import CC
 
-logging.basicConfig(
-    level=logging.INFO,
+log.basicConfig(
+    level=log.INFO,
     format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
 )
-logging.getLogger("aiogram.event").setLevel(logging.WARNING)
+log.getLogger("aiogram.event").setLevel(log.WARNING)
 
-log = logging.getLogger("shop-bot")
+lg = log.getLogger("shop-bot")
 
 
 async def main() -> None:
@@ -29,18 +29,18 @@ async def main() -> None:
     dp.include_router(admin.router)
     dp.include_router(user.router)
 
-    log.info("Bot started")
+    lg.info("Bot started")
     try:
         await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
     finally:
         await bot.session.close()
-        await crypto_client.close()
+        await CC.close()
         await close_db()
-        log.info("Bot stopped")
+        lg.info("Bot stopped")
 
 
 if __name__ == "__main__":
     try:
-        asyncio.run(main())
+        aio.run(main())
     except (KeyboardInterrupt, SystemExit):
         pass

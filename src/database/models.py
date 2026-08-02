@@ -5,11 +5,11 @@ from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Numeric, Strin
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
-class Base(DeclarativeBase):
+class B(DeclarativeBase):
     pass
 
 
-class User(Base):
+class U(B):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -18,7 +18,7 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
 
 
-class Product(Base):
+class P(B):
     __tablename__ = "products"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -30,7 +30,7 @@ class Product(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
 
 
-class Invoice(Base):
+class I(B):
     __tablename__ = "invoices"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
