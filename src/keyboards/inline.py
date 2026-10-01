@@ -17,7 +17,7 @@ def get_catalog_keyboard(products: list[Product]) -> InlineKeyboardMarkup:
     rows = [
         [
             InlineKeyboardButton(
-                text=f"{product.name} — {product.price_usdt:g} USDT",
+                text=f"{product.name} - {product.price_usdt:g} USDT",
                 callback_data=ProductCallback(product_id=product.id).pack(),
             )
         ]

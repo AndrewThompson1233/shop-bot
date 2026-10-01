@@ -72,7 +72,7 @@ async def cmd_products(message: Message) -> None:
         return
 
     lines = [
-        f"{'✅' if p.is_active else '❌'} <b>{p.id}</b>. {escape(p.name[:60])} — {p.price_usdt:g} USDT"
+        f"{'✅' if p.is_active else '❌'} <b>{p.id}</b>. {escape(p.name[:60])} - {p.price_usdt:g} USDT"
         for p in products
     ]
     await message.answer("Товары:\n" + "\n".join(lines))
@@ -148,7 +148,7 @@ async def cmd_help(message: Message) -> None:
     await message.answer(
         "Команды администратора:\n"
         "<code>/add_product | Название | Цена | Контент | Описание</code>\n"
-        "<code>/products</code> — список товаров\n"
-        "<code>/del_product &lt;id&gt;</code> — скрыть товар\n"
-        "<code>/restore_product &lt;id&gt;</code> — вернуть товар"
+        "<code>/products</code> - список товаров\n"
+        "<code>/del_product &lt;id&gt;</code> - скрыть товар\n"
+        "<code>/restore_product &lt;id&gt;</code> - вернуть товар"
     )
